@@ -1,4 +1,5 @@
 import joblib
+import sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -6,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn_pandas import DataFrameMapper
 import os
+import sklearn_pandas
 import pandas as pd
 
 os.system('pip freeze')
@@ -16,6 +18,12 @@ from azureml.core import Run, Workspace, Experiment
 import azureml.core
 
 print("SDK version:", azureml.core.VERSION)
+print('The scikit-learn version is {}.'.format(sklearn.__version__))
+print('The joblib version is {}.'.format(joblib.__version__))
+print('The pandas version is {}.'.format(pd.__version__))
+
+print('The sklearn_pandas version is {}.'.format(sklearn_pandas.__version__))
+
 # -
 
 OUTPUT_DIR='./outputs'
@@ -92,11 +100,14 @@ x_train, x_test, y_train, y_test = train_test_split(attritionXData,
 
 
 # +
-# write x_test out as a pickle file for later visualization
-x_test_pkl = 'x_test.pkl'
+# write y_test out as a pickle file for later external usage
+y_test_pkl = 'y_test.pkl'
+joblib.dump(value=y_test, filename=os.path.join(OUTPUT_DIR, y_test_pkl))
 
+# write x_test out as a pickle file for later external usage
+x_test_pkl = 'x_test.pkl'
 joblib.dump(value=x_test, filename=os.path.join(OUTPUT_DIR, x_test_pkl))
-run.upload_file('x_test_ibm.pkl', os.path.join(OUTPUT_DIR, x_test_pkl))
+# (CDLTLL No needed) run.upload_file('x_test_ibm.pkl', os.path.join(OUTPUT_DIR, x_test_pkl))
 
 print('train model')
 # preprocess the data and train the classification model
@@ -106,15 +117,18 @@ model = model_pipeline.steps[-1][1]
 
 
 # +
-# save model for use outside the script
-model_file_name = 'log_reg.pkl'
+# save model file to the outputs/ folder to use outside the script
+model_file_name = 'classif-empl-attrition.pkl'
 joblib.dump(value=model_pipeline, filename=os.path.join(OUTPUT_DIR, model_file_name))
 
-# register the model with the model management service for later use
-run.upload_file('original_model.pkl', os.path.join(OUTPUT_DIR, model_file_name))
-original_model = run.register_model(model_name='amlcompute_deploy_model',
-                                    model_path='original_model.pkl')
+# Upload model .pkl file to the ROOT folder
+# run.upload_file('model_copy.pkl', os.path.join(OUTPUT_DIR, model_file_name))
 
+# register the model with the model management service for later use
+# (CDLTLL) Not needed here. I can register the model after the remote run, from the outside, depending on the results 
+#
+# original_model = run.register_model(model_name='classif-empl-attrition-aml-comp',
+#                                     model_path=os.path.join(OUTPUT_DIR, model_file_name))
 
 # -
 
